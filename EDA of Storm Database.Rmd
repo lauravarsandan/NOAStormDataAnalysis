@@ -1,0 +1,120 @@
+---
+title: Exploratory Data Analysis of the NOAA Storm Database
+output: html_notebook
+---
+
+# Synopsis
+
+## Description
+This document uses the U.S. National Oceanic and Atmospheric Administration's (NOAA) storm database to understand what type of weather events have the biggest consequences in terms of population health and economic impact. The aim of this understanding is to inform what measures could be taken to minimize those adverse impacts.  
+
+The data contains characteristics of major storms and weather events in the United States, including when and where they occur, as well as estimates of any fatalities, injuries, and property damage.The events in the database start in the year 1950 and end in November 2011, with more data points in the most recent years.
+
+More information on how the data was constructed can be found [here](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf) and [here](https://d396qusza40orc.cloudfront.net/repdata%2Fpeer2_doc%2Fpd01016005curr.pdf). 
+
+The data has been downloaded from the [Coursera Data Specialisation Website](https://www.coursera.org/learn/reproducible-research/peer/OMZ37/course-project-2) on 5th of May 2017. 
+
+## Summary of Findings 
+
+# Data Processing
+
+## Loading in libraries
+```{r}
+#.libPaths("C:/R/lib")
+library(ggplot2)
+library(data.table)
+```
+
+
+## Reading in the Data
+
+```{r}
+storm <- read.csv("repdata%2Fdata%2FStormData.csv.bz2")
+
+head(storm)
+```
+
+## Transforming the data
+1) Converting the EVTYPE column to upper case in order to ensure it recognises the same event type as being the same and not different due  to the lower case. 
+```{r}
+storm$EVTYPE <- toupper(storm$EVTYPE)
+```
+
+
+
+
+# Results
+
+Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to population health?
+
+In order to understand this, it is assumed that injuries and fatalities are the two columns indicative of population health. In order to compare events, we add them together and calculate 1) the average population impacted per event for each event type and 2) the sum of population impacted over time for each event
+
+```{r}
+storm$health <- storm$FATALITIES + storm$INJURIES
+
+average_health <- aggregate(health ~ EVTYPE, data=storm, FUN=mean)
+names(average_health) <- c("Event.Type", "Average.Impacted.People")
+
+average_health <- average_health[order(-average_health$Average.Impacted.People),]
+
+sum_health <- aggregate(health ~ EVTYPE, data=storm, FUN=sum)
+names(sum_health) <- c("Event.Type", "Total.Impacted.People")
+
+sum_health <- sum_health[order(-sum_health$Total.Impacted.People),]
+
+```
+
+## Viualising the results for which event types have the biggest health impact (Selecting the top 10 events)
+
+```{r}
+top10_average_health <- average_health[1:10,]
+
+top10_sum_health <- sum_health[1:10,]
+
+
+
+# Need to convert to a factor variable in order to preserve the sort order
+
+top10_average_health$Event.Type <- factor(top10_average_health$Event.Type, levels=unique(top10_average_health$Event.Type))
+
+top10_sum_health$Event.Type <- factor(top10_sum_health$Event.Type, levels=unique(top10_sum_health$Event.Type))
+
+par(mfrow=c(1,2))
+
+p <- ggplot(data=top10_average_health, aes(x=reorder(Event.Type,Average.Impacted.People), y=Average.Impacted.People))
+p <- p + geom_bar(position="dodge", stat="identity")
+p <- p + coord_flip()
+p <- p + ggtitle("Average people injured or dead per occurence")
+p <- p + xlab("Event Type")
+p
+
+p2 <- ggplot(data=top10_sum_health, aes(x=reorder(Event.Type,Total.Impacted.People), y=Total.Impacted.People))
+p2 <- p2 + geom_bar(position="dodge", stat="identity")
+p2 <- p2 + coord_flip()
+p2 <- p2 + ggtitle("Total people injured or dead since 1950")
+p2 <- p2 + xlab("Event Type")
+p2
+
+```
+
+We can see that the tropical storm Gordon had the highest number of people impacted per event, whilst tornadoes have had a low number of people impacted people per event, but a really high frequency over the years. This is because there has been only 1 tropical storm Gordon affecting around 50 people, whilst the number of tornadoes over the years accumulated to over 60,000, meaning they had a lower  number of people affected per event. 
+
+```{r}
+number_of_events <- aggregate(REFNUM ~ EVTYPE, data=storm, FUN=length)
+number_of_events[which(number_of_events$EVTYPE %in% c("TORNADO","TROPICAL STORM GORDON")),]
+
+```
+
+## Across the United States, which types of events (as indicated in the EVTYPE variable) are most harmful with respect to economic consequences?
+
+In order to understand this, it is assumed that property and crop damages are the two columns indicative of economic consequences. In order to compare events, we add them together and calculate 1) the average economic impact per event for each event type and 2) the sum of economic impact over time for each event
+
+
+## Viualising the results for which event types have the greatest economic consequences
+
+```{r}
+unique(storm$PROPDMGEXP)
+unique(storm$CROPDMGEXP )
+```
+
+
